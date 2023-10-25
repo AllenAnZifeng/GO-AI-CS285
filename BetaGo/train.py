@@ -2,6 +2,7 @@ import collections
 import os
 from datetime import datetime
 
+import pickle
 import gym
 import torch
 from mpi4py import MPI
@@ -58,6 +59,7 @@ def train(comm, args, curr_pi, checkpoint_pi):
     utils.mpi_log_info(comm, utils.get_iter_header())
 
     winrates = collections.defaultdict(float)
+    training_logs = []
     for iteration in range(args.iterations):
         # Train Step
         metrics, replay_len = train_step(comm, args, curr_pi, optim, checkpoint_pi)
@@ -71,8 +73,10 @@ def train(comm, args, curr_pi, checkpoint_pi):
 
         # Print iteration summary
         iter_info = utils.get_iter_entry(starttime, iteration, replay_len, metrics, winrates, checkpoint_pi)
-
+        training_logs.append(iter_info)
         utils.mpi_log_info(comm, iter_info)
+
+    return training_logs
 
 
 if __name__ == '__main__':
@@ -108,4 +112,9 @@ if __name__ == '__main__':
     checkpoint_model.to(device)
 
     # Train
-    train(comm, args, curr_pi, checkpoint_pi)
+    training_logs = train(comm, args, curr_pi, checkpoint_pi)
+
+    # Save training logs
+    # TODO: Add experiment name in logs
+    with open('training_logs.pkl', 'wb') as f:
+        pickle.dump(training_logs, f)
